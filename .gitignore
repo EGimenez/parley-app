@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+build/
+dist/
+*.whl
+.vscode/settings.json
+
+# Parley keeps every credential and all generated state in ~/.parley/,
+# outside the repo. These are a safety net for a stray local file.
+credentials.json
+token*.json
+msal_cache*.json
+delta*.txt
+.env
+config/

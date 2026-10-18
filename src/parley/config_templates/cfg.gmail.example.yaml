@@ -1,0 +1,74 @@
+# Parley agent config — Gmail.  Copy to ~/.parley/cfg_gmail.yaml and fill in.
+# (Parley also writes these example files into ~/.parley/ on first run.)
+#
+# ONE cfg = ONE private agent: it holds the LLM key + provided secrets INLINE, and
+# only NAMES generated files (relative paths resolve under ~/.parley/). Multiple
+# accounts? Add more entries under `account:` — busy/free is unioned across them.
+
+poll_seconds: 15
+
+# The human this agent schedules for. Parley introduces itself with this name in
+# the emails it sends peers ("Hi, this is Parley, <name>'s scheduling assistant …").
+user:
+  name: "Your Name"
+
+# The agent's brain (per cfg → per agent). `anthropic_key_file: "…"` also works.
+# `model` is required — Parley never picks one for you; set the one you want to run.
+# A family name - "opus", "sonnet" or "haiku" - always means the NEWEST model of
+# that family (looked up at every start); a full id like "claude-opus-4-8" pins one.
+llm:
+  anthropic_key: "sk-ant-…"
+  model: "opus"   # the brain needs a capable model; "opus" = the newest Opus
+  # --- OR a LOCAL brain via Ollama (no cloud, no API key) — replace the two lines above.
+  # Run `ollama serve` and `ollama pull <model>` first, then:
+  #   provider: ollama
+  #   model: "llama3.1:8b"       # must be a TOOL-CALLING model (llama3.1 / qwen2.5 / mistral-nemo)
+  #   base_url: "http://localhost:11434/v1"   # optional; this is ollama's default
+
+  # --- OR the CLAUDE CODE CLI as the brain (no API key at all) - replace the two
+  # lines above with these two. Parley shells out to `claude -p` per decision, so the
+  # brain rides YOUR claude.ai login instead of a key you pay per token for. Needs the
+  # Claude Code CLI installed and logged in (`claude` on PATH). Slower (~15-50s per
+  # step vs a few seconds) and it pays ~25k tokens of Claude Code's own harness prompt
+  # per call, so prefer it when you have no key, not when you have one.
+  #   provider: claude-code
+  #   model: "opus"
+  # And to hand each admitted event to a BACKGROUND Claude Code session instead of
+  # running the tool loop in the daemon (the session blocks for free until there is
+  # work, so cost follows events rather than clock time):
+  #   driver: session
+
+# The gateway's intake classifier — a SMALL model that triages plain mail
+# (ADMIT/IGNORE) before the brain ever runs; fails open to the keyword heuristic.
+# May carry its own provider / anthropic_key; each defaults to llm:'s.
+llm-gateway:
+  model: "haiku"   # the newest Haiku
+  # provider: "anthropic"      # optional: "anthropic" (default) or "ollama"; defaults to llm:'s
+  # anthropic_key: "sk-…"      # optional: its own key (or anthropic_key_file); defaults to llm:'s
+
+account:
+  - backend: gmail
+    address: you@gmail.com
+    token: state/gmail/token.json      # generated on first consent (under ~/.parley/)
+    calendars: [primary]               # first = booking target; add ids to union free/busy
+    # history_file: state/gmail/history.json   # intake cursor (optional; default shown)
+    # catch_up: "1d"                            # cold-start look-back: "7d"/"24h"/"today"/"none"
+
+    # Provided OAuth client, INLINE (Google Cloud console → Desktop-app OAuth client).
+    google:
+      client_id: "…apps.googleusercontent.com"
+      client_secret: "…"
+
+    # intake: false                    # calendar-only: never polled for mail; its events
+                                        # still count in every busy/free check
+    policy:
+      # The trust table — hard authority the guardrail enforces BEFORE any reasoning
+      # (and it beats the prose): principal -> "auto" | "ask" | "ignore", per-verb overrides.
+      # trust:
+      #   "boss@example.com": auto
+      #   "newsletter@list.com": ignore
+      #   "new@person.com": { default: ask, send_email: auto }
+      # Retired (still read as a shim): accept_requests_from: [teammate@example.com]
+      # Free-text policy the agent's brain follows. The suggested default below is the
+      # semi-negotiating stance: the agent negotiates, but a brand-new commitment asks you first.
+      unstructured: "Ask me before accepting any brand-new meeting. Accept reschedules of meetings I already have if the new slot is free."

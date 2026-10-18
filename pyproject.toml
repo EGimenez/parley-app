@@ -1,0 +1,95 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "parley"
+version = "0.1.0"
+description = "Per-user agents that negotiate meeting times agent-to-agent."
+readme = "README.md"
+requires-python = ">=3.11"
+# Source-available, NOT open source: free for noncommercial use, commercial use
+# needs a separate licence from the copyright holder. PolyForm has no official
+# SPDX id, hence LicenseRef-.
+license = "LicenseRef-PolyForm-Noncommercial-1.0.0"
+license-files = ["LICENSE"]
+keywords = ["scheduling", "agents", "email", "calendar", "llm"]
+classifiers = [
+    # No "License ::" classifier here: PEP 639 replaced those with the `license`
+    # expression above, and setuptools >= 77 REFUSES a build that declares both.
+    # Keeping it broke every fresh install (found 2026-09-24, setuptools 80.9).
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: Microsoft :: Windows",
+    "Environment :: Console",
+    "Topic :: Office/Business :: Scheduling",
+]
+dependencies = [
+    "google-api-python-client>=2.0.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.2.0",
+    "msal>=1.28.0",
+    "requests>=2.31.0",
+    "pywin32>=306; sys_platform == 'win32'",
+    "anthropic>=0.40.0",
+    # zoneinfo has NO timezone database on Windows without this — without it every
+    # naive local time silently degrades to UTC (iteration 11's wrong-instant bug).
+    "tzdata; sys_platform == 'win32'",
+    # Detects the machine's IANA zone so the setup wizard can PREFILL the timezone
+    # (yahoo, mail-only) instead of asking cold (iteration 26 G2).
+    "tzlocal>=5.0",
+    "PyYAML>=6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/EGimenez/parley-app"
+Documentation = "https://github.com/EGimenez/parley-app/blob/main/docs/user-documentation/README.md"
+Source = "https://github.com/EGimenez/parley-app"
+# Commercial-licence enquiries: the contact is in the LICENSE.
+License = "https://github.com/EGimenez/parley-app/blob/main/LICENSE"
+
+# Optional: the Claude Agent SDK orchestrator (PARLEY_ORCHESTRATOR=sdk). Also needs the
+# `claude` CLI on PATH. The default native orchestrator only needs `anthropic` (above).
+# `desktop` = the tray app (iteration 22): icon, toasts; tkinter + pywin32 are the rest.
+[project.optional-dependencies]
+sdk = ["claude-agent-sdk>=0.2"]
+desktop = [
+    "pystray>=0.19",
+    "Pillow>=10.0",
+    "windows-toasts>=1.1; sys_platform == 'win32'",
+]
+# `organizer` = what the /myorganizer skill's objectives reader needs (an Excel file).
+organizer = ["openpyxl>=3.1"]
+
+# `parley` = THE entry (iteration 22): client by default, --serve/--run/--selftest modes
+# (parley/__main__.py). `parley-server` = the bare server entry (parley_start_server.py).
+[project.scripts]
+parley = "parley.__main__:main"
+parley-server = "parley.parley_start_server:main"
+
+# `parley_desktop` = the tray app (icon + toasts + question window + Win-Alt-P prompt).
+# A GUI script (pythonw): launching it from a terminal returns immediately — the tray
+# lives on after the window closes. Debug with console output via:
+#   python -m parley.client_server.parley_desktop
+[project.gui-scripts]
+parley_desktop = "parley.client_server.parley_desktop:main"
+
+# Single `parley` package under src/ (src layout); discovery finds its subpackages
+# (agent, accounts, client_server, testing).
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# The cfg.<backend>.example.yaml templates ship inside the package so a wheel
+# install (no source tree) can still seed ~/.parley (config.scaffold_home).
+# The Setup Window's step screenshots (install_config/guide/) ship the same way,
+# and so do the Claude Code skills (skills/: /parley, /myorganizer), which the
+# installer copies into ~/.claude/skills so they work from any directory rather than
+# only in a checkout. A skill is a folder (SKILL.md + references/ + scripts/). The
+# repo's own .claude/skills/<name>/ are copies of those same folders, kept identical
+# by a selftest so the two cannot drift.
+[tool.setuptools.package-data]
+parley = ["config_templates/*.yaml", "install_config/guide/*.png",
+          "client_server/assets/*.ico", "skills/*/SKILL.md",
+          "skills/*/references/*.md", "skills/*/scripts/*.py"]
